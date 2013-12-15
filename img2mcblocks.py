@@ -101,7 +101,7 @@ class TexturePack(object):
 						pass
 
 	def getMatches(self, color):
-		"""Return textures sorted by distance"""
+		"""Return dictionary mapping distance (==s imilarity) to textures"""
 		assert not isinstance(color, basestring), "color is not an RGB tuple"
 
 		if not self._match_cache.has_key(color):
@@ -114,6 +114,7 @@ class TexturePack(object):
 		return self._match_cache
 
 	def getSortedMatches(self, color):
+		"""Return textures sorted by distance"""
 		matches = self.getMatches(color)
 		return OrderedDict(sorted(matches.items(), key=lambda t: t[1], reverse=True))
 
