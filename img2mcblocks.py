@@ -5,7 +5,7 @@ from colormath.color_objects import *
 import re
 import os
 import cStringIO
-from collections import OrderedDict
+import operator
 import base64
 
 re_sideonly = re.compile('_side|_front')
@@ -120,7 +120,13 @@ class TexturePack(object):
 	def getSortedMatches(self, color):
 		"""Return textures sorted by distance"""
 		matches = self.getMatches(color)
-		return OrderedDict(sorted(matches.items(), key=lambda t: t[1], reverse=False))
+		return matches # TODO: FIXME
+		#return sorted(matches.iteritems(), key=operator.itemgetter(0))
+
+#	def getSortedMatches(self, color):
+#		"""Return textures sorted by distance"""
+#		matches = self.getMatches(color)
+#		return OrderedDict(sorted(matches.items(), key=lambda t: t[1], reverse=False))
 
 # testing
 
