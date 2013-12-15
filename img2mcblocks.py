@@ -3,6 +3,7 @@
 from PIL import Image
 from colormath.color_objects import *
 import re, os
+from collections import OrderedDict
 
 re_sideonly = re.compile('_side|_front')
 re_toponly = re.compile('_top')
@@ -13,6 +14,9 @@ class Texture:
 		self.tags = {}
 
 	def loadfile(self, filename):
+		# keep filename
+		self.filename = filename
+
 		# keep image
 		self.image = Image.open(filename).convert("RGB")
 
@@ -39,13 +43,17 @@ class Texture:
 	def singlecolor(self):
 		return self.singlecolor
 
+	def __str__(self):
+		return self.filename
+
 class TexturePack():
 	"""Collection of textures"""
 	def __init__(self):
 		self.textures = {}
+		self.match_cache = {}
 
 	def loaddir(self, dir = 'textures'):
-		# load all images in dir
+		"""Add all images in dir to the texture pack"""
 		for root, dirs, files in os.walk(dir):
 			for f in files:
 				filename = os.path.join(root,f)
@@ -58,12 +66,22 @@ class TexturePack():
 					except IOError:
 						pass
 
-# read image
-i = Image.open('FastGhastBlast.png').convert("RGB")
+	def getMatches(self, color):
+		"""Return textures sorted by distance"""
+		assert not isinstance(color, basestring), "color is not an RGB tuple"
+		if self.match_cache.has_key(color):
+			return self.match_cache.has_key(color)
+		else:
+			matches = {}
+			labcolor = RGBColor(*color, rgb_type='sRGB').convert_to('lab')
+			for t in self.textures.values():
+				matches[t] = t.labcolor.delta_e(labcolor)
+			self.match_cache[color] = matches
+			#return OrderedDict(sorted(matches.items(), key=lambda t: t[1]))
+			return matches
 
 t = TexturePack()
 t.loaddir('textures')
 
-# c1=RGBColor(188, 223, 214, rgb_type='sRGB').convert_to('lab')
-# c1.delta_e(c3, mode='cmc', pl=1, pc=1)
-# i.resize( (1,1), resample=Image.ANTIALIAS).getpixel( (0,0) )
+# read image
+i = Image.open('FastGhastBlast.png').convert("RGB")
