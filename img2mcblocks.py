@@ -111,14 +111,14 @@ class TexturePack(object):
 				matches[t] = t.labcolor.delta_e(labcolor)
 			self._match_cache[color] = matches
 
-		return self._match_cache
+		return self._match_cache[color]
 
 	def getSortedMatches(self, color):
 		"""Return textures sorted by distance"""
 		matches = self.getMatches(color)
-		return OrderedDict(sorted(matches.items(), key=lambda t: t[1], reverse=True))
+		return OrderedDict(sorted(matches.items(), key=lambda t: t[1], reverse=False))
 
-# here be dragons…
+# testing
 
 # load texture pack
 tp = TexturePack()
@@ -132,5 +132,7 @@ i = Image.open('FastGhastBlast.png').convert("RGB")
 for w in xrange(0, i.size[0]-1):
 	for h in xrange(0, i.size[1]-1):
 		color = i.getpixel((w,h))
-		#print tp.getMatches(color)
-	print "\n"
+		m = tp.getMatches(color)
+		print "<!-- [%3d, %3d]: (%d, %d, %d) -->" % (h, w, color[0], color[1], color[2])
+		print m.keys()[0].html_img
+	print "<br>"
