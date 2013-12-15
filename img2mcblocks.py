@@ -19,7 +19,7 @@ class Texture(object):
 
 	def loadfile(self, filename):
 		# keep filename
-		self.filename = filename
+		self._filename = filename
 
 		with open(filename, 'r') as file:
 			# keep original image
@@ -55,10 +55,10 @@ class Texture(object):
 	def singlecolor(self):
 		return self.singlecolor
 
-	def __str__(self):
-		return self.filename
-	def __repr__(self):
-		return self.filename
+#	def __str__(self):
+#		return self.filename
+#	def __repr__(self):
+#		return self.filename
 
 	@property
 	def base64(self):
@@ -70,6 +70,10 @@ class Texture(object):
 	@property
 	def datauri(self):
 	    return "data:image/%s;base64,%s" % (self.format, self.base64)
+
+	@property
+	def filename(self):
+	    return self._filename
 
 	@property
 	def html_img(self):
@@ -101,7 +105,7 @@ class TexturePack(object):
 						pass
 
 	def getMatches(self, color):
-		"""Return dictionary mapping distance (==s imilarity) to textures"""
+		"""Return dictionary mapping distance (== similarity) to textures"""
 		assert not isinstance(color, basestring), "color is not an RGB tuple"
 
 		if not self._match_cache.has_key(color):
@@ -133,6 +137,6 @@ for w in xrange(0, i.size[0]-1):
 	for h in xrange(0, i.size[1]-1):
 		color = i.getpixel((w,h))
 		m = tp.getMatches(color)
-		print "<!-- [%3d, %3d]: (%d, %d, %d) -->" % (h, w, color[0], color[1], color[2])
-		print m.keys()[0].html_img
+		print "<!-- [%3d, %3d]: (%d, %d, %d) --> %s" % (h, w, color[0], color[1], color[2], m.keys()[0])
+
 	print "<br>"
