@@ -39,6 +39,7 @@ class Texture(object):
 		self.labcolor = self.rgbcolor.convert_to('lab')
 
 		# tag
+		# FIXME: logs and pillars can be placed vertically
 		if re_sideonly.search(filename):
 			self.tags['side'] = True
 		elif re_toponly.search(filename):
@@ -55,7 +56,9 @@ class Texture(object):
 		return self.singlecolor
 
 	def __str__(self):
-			return self.filename
+		return self.filename
+	def __repr__(self):
+		return self.filename
 
 	@property
 	def base64(self):
@@ -100,16 +103,21 @@ class TexturePack(object):
 	def getMatches(self, color):
 		"""Return textures sorted by distance"""
 		assert not isinstance(color, basestring), "color is not an RGB tuple"
-		if self._match_cache.has_key(color):
-			return self._match_cache.has_key(color)
-		else:
+
+		if not self._match_cache.has_key(color):
 			matches = {}
 			labcolor = RGBColor(*color, rgb_type='sRGB').convert_to('lab')
 			for t in self.textures.values():
 				matches[t] = t.labcolor.delta_e(labcolor)
 			self._match_cache[color] = matches
-			#return OrderedDict(sorted(matches.items(), key=lambda t: t[1]))
-			return matches
+
+		return self._match_cache
+
+	def getSortedMatches(self, color):
+		matches = self.getMatches(color)
+		return OrderedDict(sorted(matches.items(), key=lambda t: t[1], reverse=True))
+
+# here be dragons…
 
 # load texture pack
 tp = TexturePack()
@@ -120,3 +128,8 @@ t.loadfile('textures/blocks/obsidian.png')
 
 # read image
 i = Image.open('FastGhastBlast.png').convert("RGB")
+for w in xrange(0, i.size[0]-1):
+	for h in xrange(0, i.size[1]-1):
+		color = i.getpixel((w,h))
+		#print tp.getMatches(color)
+	print "\n"
