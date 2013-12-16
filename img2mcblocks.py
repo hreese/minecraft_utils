@@ -1,12 +1,14 @@
 #!/usr/bin/python
-
 from PIL import Image
 from colormath.color_objects import *
-import re
-import os
-import cStringIO
-import operator
 import base64
+import cStringIO
+import os
+import re
+import sys
+
+option_pil_image_resize = { 'resample' : Image.ANTIALIAS }
+option_colormath_delta_e = { 'mode' : 'cmc', 'pl' : 1, 'pc' : 1 }
 
 re_sideonly = re.compile('_side|_front')
 re_toponly = re.compile('_top')
@@ -32,7 +34,7 @@ class Texture(object):
         self.image = Image.open(cStringIO.StringIO(self.rawimage)).convert("RGB")
 
         # shrink image to obtain single color
-        self.singlecolor = self.image.resize( (1,1), resample=Image.ANTIALIAS).getpixel( (0,0) )
+        self.singlecolor = self.image.resize( (1,1), **option_pil_image_resize).getpixel( (0,0) )
 
         # convert to Lab colorspace for better comparison
         self.rgbcolor = RGBColor(*self.singlecolor, rgb_type='sRGB')
@@ -55,10 +57,10 @@ class Texture(object):
     def singlecolor(self):
         return self.singlecolor
 
-#   def __str__(self):
-#       return self.filename
-#   def __repr__(self):
-#       return self.filename
+    def __str__(self):
+        return self.filename
+#    def __repr__(self):
+#        return self.filename
 
     @property
     def base64(self):
@@ -77,8 +79,8 @@ class Texture(object):
 
     @property
     def html_img(self):
-        (w, h) = self.image.size
-        return '<img width="%d" height="%d" alt="%s" id="%s" src="%s" />' % (w, h, self.filename, self.filename, self.datauri)
+        w, h = self.image.size
+        return '<img width="%d" height="%d" title="%s" id="%s" src="%s" />' % (w, h, self.filename, self.filename, self.datauri)
 
 class TexturePack(object):
     """Collection of textures"""
@@ -112,21 +114,15 @@ class TexturePack(object):
             matches = {}
             labcolor = RGBColor(*color, rgb_type='sRGB').convert_to('lab')
             for t in self.textures.values():
-                matches[t] = t.labcolor.delta_e(labcolor)
+                matches[t] = t.labcolor.delta_e(labcolor, **option_colormath_delta_e)
             self._match_cache[color] = matches
 
         return self._match_cache[color]
 
-    def getSortedMatches(self, color):
+    def getBestMatch(self, color):
         """Return textures sorted by distance"""
         matches = self.getMatches(color)
-        return matches # TODO: FIXME
-        #return sorted(matches.iteritems(), key=operator.itemgetter(0))
-
-#   def getSortedMatches(self, color):
-#       """Return textures sorted by distance"""
-#       matches = self.getMatches(color)
-#       return OrderedDict(sorted(matches.items(), key=lambda t: t[1], reverse=False))
+        return sorted(matches.iteritems(), key=lambda t: t[1], reverse=False)[0][0]
 
 # testing
 
@@ -138,11 +134,25 @@ t = Texture()
 t.loadfile('textures/blocks/obsidian.png')
 
 # read image
-i = Image.open('FastGhastBlast.png').convert("RGB")
-for w in xrange(0, i.size[0]-1):
-    for h in xrange(0, i.size[1]-1):
-        color = i.getpixel((w,h))
-        m = tp.getMatches(color)
-        print "<!-- [%3d, %3d]: (%d, %d, %d) --> %s" % (h, w, color[0], color[1], color[2], m.keys()[0])
+i = Image.open(sys.argv[1]).convert("RGB")
 
-    print "<br>"
+with file(sys.argv[2], "wb") as out:
+    out.write("""
+        <!DOCTYPE HTML>
+        <html>
+        <head>
+        <style type="text/css">
+            body {background-color: gray; }
+            div {height:16px}
+        </style>
+        </head>
+        <body>
+    """)
+    for h in xrange(0, i.size[1]):
+        out.write("<div>")
+        for w in xrange(0, i.size[0]):
+            color = i.getpixel((w,h))
+            m = tp.getBestMatch(color)
+            # out.write("<!-- [%3d, %3d]: (%d, %d, %d) -->" % (h, w, color[0], color[1], color[2]))
+            out.write(m.html_img)
+        out.write("</div>")
