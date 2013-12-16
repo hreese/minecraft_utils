@@ -3,6 +3,8 @@ from PIL import Image
 from colormath.color_objects import *
 import base64
 import cStringIO
+import json
+import operator
 import os
 import re
 import sys
@@ -16,12 +18,13 @@ re_toponly = re.compile('_top')
 class Texture(object):
     """Minecraft texture"""
     def __init__(self):
-        self.tags = {}
+        self._tags = {}
         self.cache = {}
 
     def loadfile(self, filename):
         # keep filename
         self._filename = filename
+        self._shortname = os.path.splitext(os.path.basename(filename))[0]
 
         with open(filename, 'r') as file:
             # keep original image
@@ -34,7 +37,7 @@ class Texture(object):
         self.image = Image.open(cStringIO.StringIO(self.rawimage)).convert("RGB")
 
         # shrink image to obtain single color
-        self.singlecolor = self.image.resize( (1,1), **option_pil_image_resize).getpixel( (0,0) )
+        self._singlecolor = self.image.resize( (1,1), **option_pil_image_resize).getpixel( (0,0) )
 
         # convert to Lab colorspace for better comparison
         self.rgbcolor = RGBColor(*self.singlecolor, rgb_type='sRGB')
@@ -43,20 +46,24 @@ class Texture(object):
         # tag
         # FIXME: logs and pillars can be placed vertically
         if re_sideonly.search(filename):
-            self.tags['side'] = True
+            self._tags['side'] = True
         elif re_toponly.search(filename):
-            self.tags['top'] = True
+            self._tags['top'] = True
         else:
-            self.tags['side'] = True
-            self.tags['top'] = True
-            self.tags['uniform'] = True
-
+            self._tags['side'] = True
+            self._tags['top'] = True
+            self._tags['uniform'] = True
+    
+    @property
     def tags(self):
-        return self.tags.keys()
-
+        return self._tags.keys()
+    @property
     def singlecolor(self):
-        return self.singlecolor
-
+        return self._singlecolor
+    @property
+    def size(self):
+        return self.image.size
+    
     def __str__(self):
         return self.filename
 #    def __repr__(self):
@@ -76,11 +83,16 @@ class Texture(object):
     @property
     def filename(self):
         return self._filename
+    @property
+    def shortname(self):
+        return self._shortname
 
     @property
     def html_img(self):
-        w, h = self.image.size
-        return '<img width="%d" height="%d" title="%s" id="%s" src="%s" />' % (w, h, self.filename, self.filename, self.datauri)
+        w, h = self.size
+        # add alternatives (TODO: seems buggy)
+        altlist = ', '.join([x.shortname for x in dict(sorted(tp.getMatches(self.singlecolor).iteritems(), key = operator.itemgetter(1))[:8]).keys()])
+        return '<img width="%d" height="%d" title="%s (%s)" id="%s" src="%s" />' % (w, h, self.shortname, altlist, self.filename, self.datauri)
 
 class TexturePack(object):
     """Collection of textures"""
@@ -124,6 +136,15 @@ class TexturePack(object):
         matches = self.getMatches(color)
         return sorted(matches.iteritems(), key=lambda t: t[1], reverse=False)[0][0]
 
+    def exportAsJSON(self):
+        j = {}
+        for k,v in self.textures.iteritems():
+            j[k] = {}
+            j[k]['datauri'] = v.datauri
+            (j[k]['w'], j[k]['h']) = v.size
+            j[k]['name'] = k
+        return json.dumps(j, sort_keys=True, separators=(',',': '), indent=4)
+
 # testing
 
 # load texture pack
@@ -132,6 +153,10 @@ tp.loaddir('textures')
 
 t = Texture()
 t.loadfile('textures/blocks/obsidian.png')
+
+#print tp.exportAsJSON()
+
+#sys.exit(23)
 
 # read image
 i = Image.open(sys.argv[1]).convert("RGB")
